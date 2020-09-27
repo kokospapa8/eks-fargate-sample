@@ -24,7 +24,7 @@ spec:
     spec:
         ##################
       containers:
-      - name: hangfive-rq
+      - name: sample-rq
         image: ""
         envFrom:
         - secretRef:

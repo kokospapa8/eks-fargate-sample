@@ -1,0 +1,48 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: eks-sample-node
+  region: us-east-2
+  version: "1.17"
+
+
+# https://github.com/weaveworks/eksctl/blob/master/examples/13-iamserviceaccounts.yaml
+iam:
+  withOIDC: true
+  serviceRoleARN: arn:aws:iam::<account_id>:role/<sample-eks-cluster-role>
+  fargatePodExecutionRoleARN: arn:aws:iam::<account_id>:role/<sample-eks-pod-execution-role>
+
+
+managedNodeGroups:
+- name: sample-nodegroup
+  minSize: 1
+  maxSize: 3
+  desiredCapacity: 2
+  instanceType:	t3.micro
+  availabilityZones: ["us-east-2a", "us-east-2b"]
+  volumeSize: 30
+  ssh:
+    allow: true
+    publicKeyName: eks-sample
+  securityGroups:
+      attachIDs: ["<>"]
+  iam:
+    instanceRoleARN: "arn:aws:iam::<account_id>:role/<instance role>"
+
+cloudWatch:
+  clusterLogging:
+    enableTypes: ["*"]
+
+secretsEncryption:
+  keyARN: <CMK_ARN>
+
+vpc:
+  id: "vpc-0a39c34ddd19b7038"
+  subnets:
+    public:
+      us-east-2a: {id: "subnet-<>"}
+      us-east-2b: {id: "subnet-<>"}
+     private:
+       us-east-2a: {id: "subnet-<>"}
+       us-east-2b: {id: "subnet-<>"}

@@ -113,7 +113,7 @@ spec:
 #        - name: AWS_REGION
 #          value: us-west-2
 #        - name: CLUSTER_NAME
-#          value: hangfive-eks-fargate
+#          value: eks-sample
 #        - name: CI_VERSION
 #          value: "k8s/1.0.1"
 #        resources:

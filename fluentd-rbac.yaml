@@ -21,5 +21,5 @@ roleRef:
   name: fluentd-django
 subjects:
 - kind: ServiceAccount
-  name: hangfive-log-sa
+  name: sample-log-sa
   namespace: api
