@@ -1,0 +1,24 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: "sample-fargate-ingress"
+  namespace: "api"
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+#    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-west-2:<account_id>:certificate/<id>
+    alb.ingress.kubernetes.io/subnets: subnet-, subnet-
+    alb.ingress.kubernetes.io/healthcheck-path: "/api/healthcheck"
+    alb.ingress.kubernetes.io/success-codes: "200,301,302"
+    # alb.ingress.kubernetes.io/security-groups:
+  labels:
+    app: api-ingress
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /*
+        backend:
+          serviceName: "sample-api-service"
+          servicePort: 80

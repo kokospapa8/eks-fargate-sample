@@ -1,0 +1,59 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: eks-sample
+  region: us-east-2
+  version: "1.17"
+
+iam:
+  withOIDC: true
+  serviceRoleARN: arn:aws:iam::<account_id>:role/<sample-eks-cluster-role>
+  fargatePodExecutionRoleARN: arn:aws:iam::<account_id>:role/<sample-eks-pod-execution-role>
+
+
+vpc:
+  id: "<>" # VPC created
+  cidr: "172.10.0.0/16"
+  subnets:
+    public:
+      us-east-2a:
+        id: "<>" #subnet
+        cidr: "172.10.1.0/24"
+      us-east-2b:
+        id: "<>"
+        cidr: "172.10.2.0/24"
+    private:
+      us-east-2a:
+        id: "<>"
+        cidr: "172.10.11.0/24"
+      us-east-2b:
+        id: "<>"
+        cidr: "172.10.12.0/24"
+  sharedNodeSecurityGroup: "<>" # Cloudformation out of `DefaultSG`
+                                #otherwise Create a SecurityGroup and provide the id here with inbound rule: AllTraffic - Source (Self) communicate with each other (all ports)
+  autoAllocateIPv6: false
+  clusterEndpoints:
+    privateAccess: false
+    publicAccess: true
+
+fargateProfiles:
+- name: fp-default
+  selectors:
+  - namespace: default
+  - namespace: kube-system
+  subnets: ['<private_subnet1>', '<private_subnet2>']
+
+- name: sample-app
+  selectors:
+  - namespace: api
+    labels:
+      app: api
+  subnets: ['<private_subnet1>', '<private_subnet2>']
+
+cloudWatch:
+  clusterLogging:
+    enableTypes: ["*"]
+
+secretsEncryption:
+  keyARN: <CMK_ARN>

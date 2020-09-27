@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sample-api-deployment
+  namespace: api
+  labels:
+    app: api
+    env: staging
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+  template:
+    metadata:
+      name: sample-api-pod
+      labels:
+        app: api
+    spec:
+      volumes:
+      - name: nginx-conf-vol
+        configMap:
+          name: nginx-conf # place ConfigMap `nginx-conf` on /etc/nginx
+          items:
+          - key: nginx.conf
+            path: app.conf
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: nginx-conf-vol
+          readOnly: true
+          mountPath: /etc/nginx/conf.d/ # mount nginx-conf volumn to /etc/nginx
+        # livenessProbe:
+        #   initialDelaySeconds: 15
+        #   periodSeconds: 30
+        #   failureThreshold: 1
+        #   httpGet:
+        #     path: /api/healthcheck
+        #     port: 80
+        # resources:
+        #   requests:
+        #     cpu: "0.5"
+        #     memory: "256Mi"
+        #   limits:
+        #     cpu: "2"
+       ##################
+      - name: sample-api
+        image: "982947632035.dkr.ecr.us-east-2.amazonaws.com/ecs-sample-api:latest"
+        ports:
+        - containerPort: 8000
+          name: api-port
+        envFrom:
+        - secretRef:
+            name: staging-secret
+        - configMapRef:
+            name: django-env-conf
+        securityContext:
+          privileged: false
+          readOnlyRootFilesystem: false
+          allowPrivilegeEscalation: false

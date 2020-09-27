@@ -1,0 +1,599 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Parameters" : {
+    "DBUsername" : {
+      "Description" : "Username for MySQL database access",
+      "Default": "admin",
+      "Type" : "String",
+      "MinLength" : "1",
+      "MaxLength" : "16",
+      "AllowedPattern" : "[a-zA-Z][a-zA-Z0-9]*",
+      "ConstraintDescription" : "must begin with a letter and contain only alphanumeric characters."
+    },
+    "DBPassword" : {
+      "NoEcho" : "true",
+      "Description" : "Password MySQL database access. Default- password",
+      "Default": "password",
+      "Type" : "String",
+      "MinLength" : "8",
+
+      "MaxLength" : "41",
+      "AllowedPattern" : "[a-zA-Z0-9]*",
+      "ConstraintDescription" : "must contain only alphanumeric characters."
+    }
+  },
+  "Resources": {
+    "IAMRole": {
+        "Type": "AWS::IAM::Role",
+        "Properties": {
+            "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "sts:AssumeRole"
+                        ],
+                        "Principal": {
+                            "Service": [
+                                "ec2.amazonaws.com"
+                            ]
+                        }
+                    }
+                ]
+            },
+            "ManagedPolicyArns": [
+                "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+            ]
+        }
+    },
+    "InstanceProfile": {
+        "Type": "AWS::IAM::InstanceProfile",
+        "Properties": {
+            "Path": "/",
+            "Roles": [
+                {
+                    "Ref": "IAMRole"
+                }
+            ]
+        },
+        "DependsOn": "IAMRole"
+    },
+    "VpcEksSample": {
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "CidrBlock": "172.10.0.0/16",
+        "InstanceTenancy": "default",
+        "EnableDnsSupport": "true",
+        "EnableDnsHostnames": "true",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "eks-sample"
+          }
+        ]
+      }
+    },
+    "EksSamplePrivate1": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "CidrBlock": "172.10.11.0/24",
+        "AvailabilityZone": "us-east-2a",
+        "VpcId": {
+          "Ref": "VpcEksSample"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "eks-sample-private 1"
+          }
+        ]
+      },
+      "DependsOn": "VpcEksSample"
+
+    },
+    "EksSamplePublic2": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "CidrBlock": "172.10.2.0/24",
+        "AvailabilityZone": "us-east-2b",
+        "VpcId": {
+          "Ref": "VpcEksSample"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "eks-sample-public 2"
+          }
+        ]
+      },
+      "DependsOn": "VpcEksSample"
+    },
+    "EksSamplePrivate2": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "CidrBlock": "172.10.12.0/24",
+        "AvailabilityZone": "us-east-2b",
+        "VpcId": {
+          "Ref": "VpcEksSample"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "eks-sample-private 2"
+          }
+        ]
+      },
+      "DependsOn": "VpcEksSample"
+
+    },
+    "EksSamplePublic1": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "CidrBlock": "172.10.1.0/24",
+        "AvailabilityZone": "us-east-2a",
+        "VpcId": {
+          "Ref": "VpcEksSample"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "eks-sample-public 1"
+          }
+        ]
+      },
+      "DependsOn": "VpcEksSample"
+    },
+    "IgwEksSample": {
+      "Type": "AWS::EC2::InternetGateway",
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "eks-sample IGW"
+          }
+        ]
+      },
+      "DependsOn": "VpcEksSample"
+    },
+    "DoptEksSample": {
+      "Type": "AWS::EC2::DHCPOptions",
+      "Properties": {
+        "DomainName": "us-east-2.compute.internal",
+        "DomainNameServers": [
+          "AmazonProvidedDNS"
+        ]
+      },
+      "DependsOn": "VpcEksSample"
+    },
+    "AclEksSample": {
+      "Type": "AWS::EC2::NetworkAcl",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VpcEksSample"
+        }
+      },
+      "DependsOn": "VpcEksSample"
+    },
+    "RtbPublic": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VpcEksSample"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "eks-sample public routing"
+          }
+        ]
+      },
+      "DependsOn": "VpcEksSample"
+    },
+    "RtbPrivate": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VpcEksSample"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "eks-sample private routing"
+          }
+        ]
+      },
+      "DependsOn": "VpcEksSample"
+    },
+    "EipNat": {
+      "Type": "AWS::EC2::EIP",
+      "Properties": {
+        "Domain": "vpc"
+      }
+    },
+    "NATGateway": {
+        "Type": "AWS::EC2::NatGateway",
+        "Properties": {
+            "AllocationId": {
+                "Fn::GetAtt": [
+                    "EipNat",
+                    "AllocationId"
+                ]
+            },
+            "SubnetId": {
+                "Ref": "EksSamplePublic1"
+            }
+        },
+        "DependsOn": [
+            "EksSamplePublic1",
+            "EipNat",
+            "IgwEksSample",
+            "GatewayAttachment"
+        ]
+    },
+
+    "cacheekssample001": {
+      "Type": "AWS::ElastiCache::CacheCluster",
+      "Properties": {
+        "AutoMinorVersionUpgrade": "true",
+        "AZMode": "single-az",
+        "CacheNodeType": "cache.t2.micro",
+        "Engine": "redis",
+        "EngineVersion": "5.0.6",
+        "NumCacheNodes": "1",
+        "PreferredAvailabilityZone": "us-east-2b",
+        "PreferredMaintenanceWindow": "thu:02:30-thu:03:30",
+        "CacheSubnetGroupName": {
+          "Ref": "cachesubnetekssampleredissubnetgroup"
+        },
+        "VpcSecurityGroupIds": [
+          {
+            "Fn::GetAtt": [
+              "sgekssampleredis",
+              "GroupId"
+            ]
+          }
+        ]
+      }
+    },
+    "dbsubnetekssamplesubnetgroup": {
+      "Type": "AWS::RDS::DBSubnetGroup",
+      "Properties": {
+        "DBSubnetGroupDescription": "eks-sample-subnet-group",
+        "SubnetIds": [
+          {
+            "Ref": "EksSamplePrivate2"
+          },
+          {
+            "Ref": "EksSamplePrivate1"
+          }
+        ]
+      }
+    },
+    "cachesubnetekssampleredissubnetgroup": {
+      "Type": "AWS::ElastiCache::SubnetGroup",
+      "Properties": {
+        "Description": "eks-sample-redis-subnet-group",
+        "SubnetIds": [
+          {
+            "Ref": "EksSamplePrivate2"
+          },
+          {
+            "Ref": "EksSamplePrivate1"
+          }
+        ]
+      }
+    },
+
+    "sgekssampleredis": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "redis",
+        "VpcId": {
+          "Ref": "VpcEksSample"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "eks-sample-redis"
+          }
+        ]
+      }
+    },
+    "sgekssamplemysql": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "mysql",
+        "VpcId": {
+          "Ref": "VpcEksSample"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "eks-sample-mysql"
+          }
+        ]
+      }
+    },
+
+    "sgdefault": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "default VPC security group",
+        "VpcId": {
+          "Ref": "VpcEksSample"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "default vpc sg"
+          }
+        ]
+      }
+    },
+    "dbsgdefault": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "default"
+      }
+    },
+    "sgekssamplemysql": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "mysql",
+        "VpcId": {
+          "Ref": "VpcEksSample"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "ecs-sample-mysql\t"
+          }
+        ]
+      }
+    },
+    "acl3": {
+      "Type": "AWS::EC2::NetworkAclEntry",
+      "Properties": {
+        "CidrBlock": "0.0.0.0/0",
+        "Egress": "true",
+        "Protocol": "-1",
+        "RuleAction": "allow",
+        "RuleNumber": "100",
+        "NetworkAclId": {
+          "Ref": "AclEksSample"
+        }
+      }
+    },
+    "acl4": {
+      "Type": "AWS::EC2::NetworkAclEntry",
+      "Properties": {
+        "CidrBlock": "0.0.0.0/0",
+        "Protocol": "-1",
+        "RuleAction": "allow",
+        "RuleNumber": "100",
+        "NetworkAclId": {
+          "Ref": "AclEksSample"
+        }
+      }
+    },
+    "subnetacl5": {
+      "Type": "AWS::EC2::SubnetNetworkAclAssociation",
+      "Properties": {
+        "NetworkAclId": {
+          "Ref": "AclEksSample"
+        },
+        "SubnetId": {
+          "Ref": "EksSamplePublic1"
+        }
+      }
+    },
+    "subnetacl6": {
+      "Type": "AWS::EC2::SubnetNetworkAclAssociation",
+      "Properties": {
+        "NetworkAclId": {
+          "Ref": "AclEksSample"
+        },
+        "SubnetId": {
+          "Ref": "EksSamplePrivate2"
+        }
+      }
+    },
+    "subnetacl7": {
+      "Type": "AWS::EC2::SubnetNetworkAclAssociation",
+      "Properties": {
+        "NetworkAclId": {
+          "Ref": "AclEksSample"
+        },
+        "SubnetId": {
+          "Ref": "EksSamplePublic2"
+        }
+      }
+    },
+    "subnetacl8": {
+      "Type": "AWS::EC2::SubnetNetworkAclAssociation",
+      "Properties": {
+        "NetworkAclId": {
+          "Ref": "AclEksSample"
+        },
+        "SubnetId": {
+          "Ref": "EksSamplePrivate1"
+        }
+      }
+    },
+    "GatewayAttachment": {
+      "Type": "AWS::EC2::VPCGatewayAttachment",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VpcEksSample"
+        },
+        "InternetGatewayId": {
+          "Ref": "IgwEksSample"
+        }
+      }
+    },
+    "subnetroute3": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "RtbPublic"
+        },
+        "SubnetId": {
+          "Ref": "EksSamplePublic1"
+        }
+      }
+    },
+    "subnetroute4": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "RtbPublic"
+        },
+        "SubnetId": {
+          "Ref": "EksSamplePublic2"
+        }
+      }
+    },
+    "subnetroute5": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "RtbPrivate"
+        },
+        "SubnetId": {
+          "Ref": "EksSamplePrivate1"
+        }
+      }
+    },
+    "subnetroute6": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "RtbPrivate"
+        },
+        "SubnetId": {
+          "Ref": "EksSamplePrivate2"
+        }
+      }
+    },
+    "route3": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "RouteTableId": {
+          "Ref": "RtbPublic"
+        },
+        "GatewayId": {
+          "Ref": "IgwEksSample"
+        }
+      },
+      "DependsOn": "GatewayAttachment"
+    },
+    "route4": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "RouteTableId": {
+          "Ref": "RtbPrivate"
+        },
+        "NatGatewayId": {
+          "Ref": "NATGateway"
+        }
+      },
+      "DependsOn": ["NATGateway","GatewayAttachment"]
+    },
+    "dchpassoc2": {
+      "Type": "AWS::EC2::VPCDHCPOptionsAssociation",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VpcEksSample"
+        },
+        "DhcpOptionsId": {
+          "Ref": "DoptEksSample"
+        }
+      }
+    },
+
+
+
+    "ingress20": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "GroupId": {
+          "Ref": "sgdefault"
+        },
+        "IpProtocol": "-1",
+        "SourceSecurityGroupId": {
+          "Ref": "sgdefault"
+        },
+        "SourceSecurityGroupOwnerId": "982947632035"
+      }
+    },
+
+    "egress7": {
+      "Type": "AWS::EC2::SecurityGroupEgress",
+      "Properties": {
+        "GroupId": {
+          "Ref": "sgekssampleredis"
+        },
+        "IpProtocol": "-1",
+        "CidrIp": "0.0.0.0/0"
+      }
+    },
+    "egress8": {
+      "Type": "AWS::EC2::SecurityGroupEgress",
+      "Properties": {
+        "GroupId": {
+          "Ref": "sgekssamplemysql"
+        },
+        "IpProtocol": "-1",
+        "CidrIp": "0.0.0.0/0"
+      }
+    },
+
+    "egress10": {
+      "Type": "AWS::EC2::SecurityGroupEgress",
+      "Properties": {
+        "GroupId": {
+          "Ref": "sgdefault"
+        },
+        "IpProtocol": "-1",
+        "CidrIp": "0.0.0.0/0"
+      }
+    }
+  },
+  "Description": "eks-sample-cf",
+  "Outputs": {
+    "VpcEksSampleId": {
+      "Value": {
+        "Ref": "VpcEksSample"
+      }
+    },
+    "IgwEksSampleId": {
+      "Value": {
+        "Ref": "IgwEksSample"
+      }
+    },
+    "NatIP": {
+      "Value": {
+        "Ref": "EipNat"
+      }
+    },
+    "DefaultSG": {
+      "Value": {
+        "Fn::GetAtt": [
+          "sgdefault",
+          "GroupId"
+        ]
+      }
+    },
+    "cacheekssample001Address": {
+      "Value": {
+        "Fn::GetAtt": [
+          "cacheekssample001",
+          "RedisEndpoint.Address"
+        ]
+      }
+    }
+  }
+}

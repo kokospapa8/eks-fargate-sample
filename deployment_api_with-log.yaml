@@ -1,0 +1,129 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sample-api-deployment
+  namespace: api
+  labels:
+    app: api
+    env: staging
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+  template:
+    metadata:
+      name: sample-api-pod
+      labels:
+        app: api
+#      annotations:
+#        iam.amazonaws.com/role: sample-log-sa
+    spec:
+      volumes:
+      - name: nginx-conf-vol
+        configMap:
+          name: nginx-conf # place ConfigMap `nginx-conf` on /etc/nginx
+          items:
+          - key: nginx.conf
+            path: app.conf
+      - name: django-volume
+        emptyDir: {}
+#      - name: fluentdconf
+#        configMap:
+#          name: fluentd-django-config
+#      - name: app-logs
+#        emptyDir: {}
+#      serviceAccount: sample-log-sa
+#      serviceAccountName: sample-log-sa
+        ##################
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: nginx-conf-vol
+          readOnly: true
+          mountPath: /etc/nginx/conf.d/ # mount nginx-conf volumn to /etc/nginx
+        # livenessProbe:
+        #   initialDelaySeconds: 15
+        #   periodSeconds: 30
+        #   failureThreshold: 1
+        #   httpGet:
+        #     path: /api/healthcheck
+        #     port: 80
+        # resources:
+        #   requests:
+        #     cpu: "0.5"
+        #     memory: "256Mi"
+        #   limits:
+        #     cpu: "2"
+       ##################
+      - name: sample-api
+        image: "<>"
+        ports:
+        - containerPort: 8000
+          name: api-port
+        envFrom:
+        - secretRef:
+            name: staging-secret
+        - configMapRef:
+            name: django-env-conf
+#        volumeMounts:
+#        - name: app-logs
+#          mountPath: /var/log/containers
+        securityContext:
+          privileged: false
+          readOnlyRootFilesystem: false
+          allowPrivilegeEscalation: false
+        # resources:
+        #   requests:
+        #     cpu: "0.5"
+        #     memory: "512Mi"
+        # readinessProbe:
+        #   initialDelaySeconds: 15
+        #   periodSeconds: 10
+        #   httpGet:
+        #     path: /api/healthcheck
+        #     port: 8000
+#      - name: logrotate
+#        image: realz/logrotate
+#        volumeMounts:
+#        - mountPath: /var/log/containers
+#          name: app-logs
+#        env:
+#        - name: CRON_EXPR
+#          value: "*/15 * * * *"
+#        - name: LOGROTATE_LOGFILES
+#          value: "/var/log/containers/*.log"
+#        - name: LOGROTATE_FILESIZE
+#          value: "50M"
+#        - name: LOGROTATE_FILENUM
+#          value: "5"
+#      - name: fluentd
+#        image: fluent/fluentd-kubernetes-daemonset:v1.9.3-debian-cloudwatch-1.0
+#        env:
+#        - name: REGION
+#          value: us-west-2
+#        - name: AWS_REGION
+#          value: us-west-2
+#        - name: CLUSTER_NAME
+#          value: hangfive-eks-fargate
+#        - name: CI_VERSION
+#          value: "k8s/1.0.1"
+#        resources:
+#          limits:
+#            memory: 400Mi
+#          requests:
+#            cpu: 100m
+#            memory: 200Mi
+#        volumeMounts:
+#        - name: fluentdconf
+#          mountPath: /fluentd/etc
+#        - name: app-logs
+#          mountPath: /var/log/containers
