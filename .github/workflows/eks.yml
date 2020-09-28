@@ -1,0 +1,72 @@
+# This is a basic workflow to help you get started with Actions
+
+name: eks_api
+
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the master branch
+on:
+  push:
+    branches: master
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  deploy:
+    name: Deploy to cluster
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@master
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-west-2
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Build, tag, and push image to Amazon ECR
+      id: build-image
+      env:
+        ECR_REGISTRY: <acount_id>.dkr.ecr.us-east-2.amazonaws.com
+        ECR_REPOSITORY: eks-sample-api
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        # Build a docker container and
+        # push it to ECR so that it can
+        # be deployed to ECS.
+        docker build -f config/app/Dockerfile_app -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+        
+    - name: update kubeconfig
+      env:
+        aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws_region: ${{ secrets.AWS_EKS_DEFAULT_REGION }}
+        ECR_REGISTRY: <acount_id>.dkr.ecr.us-east-2.amazonaws.com
+        ECR_REPOSITORY: hangfive
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        aws eks --region us-west-2 update-kubeconfig --name hangfive-eks-fargate
+        kubectl config view
+        aws sts get-caller-identity
+        curl -o aws-iam-authenticator https://amazon-eks.s3.us-west-2.amazonaws.com/1.17.9/2020-08-04/bin/linux/amd64/aws-iam-authenticator
+        chmod +x ./aws-iam-authenticator
+        mkdir -p $HOME/bin && cp ./aws-iam-authenticator $HOME/bin/aws-iam-authenticator && export PATH=$PATH:$HOME/bin
+        aws-iam-authenticator token -i hangfive-eks-fargate
+        aws eks update-kubeconfig --name hangfive-eks-fargate
+        kubectl set image --record deployment/hangfive-api-deployment hangfive-api=$ECR_REGISTRY:$IMAGE_TAG -n api
+
+#    - name: verify deployment
+#      uses: qazz92/kubectl@1.0.3
+#      env:
+#        kube_confg_data: ${{ secrets.KUBE_CONFIG_DATA }}
+#        aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#        aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#        aws_region: ${{ secrets.AWS_EKS_DEFAULT_REGION }}
+#      with:
+#        args: '"rollout status deployment/my-app"'
