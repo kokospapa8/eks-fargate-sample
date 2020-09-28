@@ -21,8 +21,8 @@ spec:
       name: sample-api-pod
       labels:
         app: api
-#      annotations:
-#        iam.amazonaws.com/role: sample-log-sa
+      annotations:
+        iam.amazonaws.com/role: sample-log-sa
     spec:
       volumes:
       - name: nginx-conf-vol
@@ -31,15 +31,13 @@ spec:
           items:
           - key: nginx.conf
             path: app.conf
-      - name: django-volume
+      - name: fluentdconf
+        configMap:
+          name: fluentd-django-config
+      - name: app-logs
         emptyDir: {}
-#      - name: fluentdconf
-#        configMap:
-#          name: fluentd-django-config
-#      - name: app-logs
-#        emptyDir: {}
-#      serviceAccount: sample-log-sa
-#      serviceAccountName: sample-log-sa
+      serviceAccount: sample-log-sa
+      serviceAccountName: sample-log-sa
         ##################
       containers:
       - name: nginx
@@ -50,20 +48,6 @@ spec:
         - name: nginx-conf-vol
           readOnly: true
           mountPath: /etc/nginx/conf.d/ # mount nginx-conf volumn to /etc/nginx
-        # livenessProbe:
-        #   initialDelaySeconds: 15
-        #   periodSeconds: 30
-        #   failureThreshold: 1
-        #   httpGet:
-        #     path: /api/healthcheck
-        #     port: 80
-        # resources:
-        #   requests:
-        #     cpu: "0.5"
-        #     memory: "256Mi"
-        #   limits:
-        #     cpu: "2"
-       ##################
       - name: sample-api
         image: "<>"
         ports:
@@ -74,56 +58,46 @@ spec:
             name: staging-secret
         - configMapRef:
             name: django-env-conf
-#        volumeMounts:
-#        - name: app-logs
-#          mountPath: /var/log/containers
+        volumeMounts:
+        - name: app-logs
+          mountPath: /var/log/containers
         securityContext:
           privileged: false
           readOnlyRootFilesystem: false
           allowPrivilegeEscalation: false
-        # resources:
-        #   requests:
-        #     cpu: "0.5"
-        #     memory: "512Mi"
-        # readinessProbe:
-        #   initialDelaySeconds: 15
-        #   periodSeconds: 10
-        #   httpGet:
-        #     path: /api/healthcheck
-        #     port: 8000
-#      - name: logrotate
-#        image: realz/logrotate
-#        volumeMounts:
-#        - mountPath: /var/log/containers
-#          name: app-logs
-#        env:
-#        - name: CRON_EXPR
-#          value: "*/15 * * * *"
-#        - name: LOGROTATE_LOGFILES
-#          value: "/var/log/containers/*.log"
-#        - name: LOGROTATE_FILESIZE
-#          value: "50M"
-#        - name: LOGROTATE_FILENUM
-#          value: "5"
-#      - name: fluentd
-#        image: fluent/fluentd-kubernetes-daemonset:v1.9.3-debian-cloudwatch-1.0
-#        env:
-#        - name: REGION
-#          value: us-west-2
-#        - name: AWS_REGION
-#          value: us-west-2
-#        - name: CLUSTER_NAME
-#          value: eks-sample
-#        - name: CI_VERSION
-#          value: "k8s/1.0.1"
-#        resources:
-#          limits:
-#            memory: 400Mi
-#          requests:
-#            cpu: 100m
-#            memory: 200Mi
-#        volumeMounts:
-#        - name: fluentdconf
-#          mountPath: /fluentd/etc
-#        - name: app-logs
-#          mountPath: /var/log/containers
+      - name: logrotate
+        image: realz/logrotate
+        volumeMounts:
+        - mountPath: /var/log/containers
+          name: app-logs
+        env:
+        - name: CRON_EXPR
+          value: "*/15 * * * *"
+        - name: LOGROTATE_LOGFILES
+          value: "/var/log/containers/*.log"
+        - name: LOGROTATE_FILESIZE
+          value: "50M"
+        - name: LOGROTATE_FILENUM
+          value: "5"
+      - name: fluentd
+        image: fluent/fluentd-kubernetes-daemonset:v1.9.3-debian-cloudwatch-1.0
+        env:
+        - name: REGION
+          value: us-west-2
+        - name: AWS_REGION
+          value: us-west-2
+        - name: CLUSTER_NAME
+          value: eks-sample
+        - name: CI_VERSION
+          value: "k8s/1.0.1"
+        resources:
+          limits:
+            memory: 400Mi
+          requests:
+            cpu: 100m
+            memory: 200Mi
+        volumeMounts:
+        - name: fluentdconf
+          mountPath: /fluentd/etc
+        - name: app-logs
+          mountPath: /var/log/containers
