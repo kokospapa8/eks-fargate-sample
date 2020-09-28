@@ -48,25 +48,16 @@ jobs:
         aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws_region: ${{ secrets.AWS_EKS_DEFAULT_REGION }}
         ECR_REGISTRY: <acount_id>.dkr.ecr.us-east-2.amazonaws.com
-        ECR_REPOSITORY: hangfive
+        ECR_REPOSITORY: eks-sample-api
         IMAGE_TAG: ${{ github.sha }}
       run: |
-        aws eks --region us-west-2 update-kubeconfig --name hangfive-eks-fargate
+        aws eks --region us-west-2 update-kubeconfig --name eks-sample
         kubectl config view
         aws sts get-caller-identity
         curl -o aws-iam-authenticator https://amazon-eks.s3.us-west-2.amazonaws.com/1.17.9/2020-08-04/bin/linux/amd64/aws-iam-authenticator
         chmod +x ./aws-iam-authenticator
         mkdir -p $HOME/bin && cp ./aws-iam-authenticator $HOME/bin/aws-iam-authenticator && export PATH=$PATH:$HOME/bin
-        aws-iam-authenticator token -i hangfive-eks-fargate
-        aws eks update-kubeconfig --name hangfive-eks-fargate
-        kubectl set image --record deployment/hangfive-api-deployment hangfive-api=$ECR_REGISTRY:$IMAGE_TAG -n api
-
-#    - name: verify deployment
-#      uses: qazz92/kubectl@1.0.3
-#      env:
-#        kube_confg_data: ${{ secrets.KUBE_CONFIG_DATA }}
-#        aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-#        aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-#        aws_region: ${{ secrets.AWS_EKS_DEFAULT_REGION }}
-#      with:
-#        args: '"rollout status deployment/my-app"'
+        aws-iam-authenticator token -i eks-sample
+        aws eks update-kubeconfig --name eks-sample
+        kubectl set image --record deployment/sample-api-deployment sample-api=$ECR_REGISTRY:$IMAGE_TAG -n api
+        kubectl rollout status -w deployment/sample-api-deployment -n api
