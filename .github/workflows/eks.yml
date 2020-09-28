@@ -51,13 +51,13 @@ jobs:
         ECR_REPOSITORY: eks-sample-api
         IMAGE_TAG: ${{ github.sha }}
       run: |
-        aws eks --region us-west-2 update-kubeconfig --name eks-sample
-        kubectl config view
-        aws sts get-caller-identity
-        curl -o aws-iam-authenticator https://amazon-eks.s3.us-west-2.amazonaws.com/1.17.9/2020-08-04/bin/linux/amd64/aws-iam-authenticator
-        chmod +x ./aws-iam-authenticator
-        mkdir -p $HOME/bin && cp ./aws-iam-authenticator $HOME/bin/aws-iam-authenticator && export PATH=$PATH:$HOME/bin
-        aws-iam-authenticator token -i eks-sample
+        aws eks --region us-east-2 update-kubeconfig --name eks-sample
+#        kubectl config view
+#        aws sts get-caller-identity
+#        curl -o aws-iam-authenticator https://amazon-eks.s3.us-west-2.amazonaws.com/1.17.9/2020-08-04/bin/linux/amd64/aws-iam-authenticator
+#        chmod +x ./aws-iam-authenticator
+#        mkdir -p $HOME/bin && cp ./aws-iam-authenticator $HOME/bin/aws-iam-authenticator && export PATH=$PATH:$HOME/bin
+#        aws-iam-authenticator token -i eks-sample
         aws eks update-kubeconfig --name eks-sample
         kubectl set image --record deployment/sample-api-deployment sample-api=$ECR_REGISTRY:$IMAGE_TAG -n api
-        kubectl rollout status -w deployment/sample-api-deployment -n api
+        kubectl rollout status deployment/sample-api-deployment -n api
